@@ -5,6 +5,7 @@ import (
 
 	"github.com/databricks/databricks-sdk-go/service/compute"
 	"github.com/databricks/terraform-provider-databricks/qa"
+	"github.com/stretchr/testify/assert"
 )
 
 var testResponse compute.ListInstanceProfilesResponse = compute.ListInstanceProfilesResponse{
@@ -419,7 +420,7 @@ func TestInstanceProfilesDataFilterIsMeta(t *testing.T) {
 }
 
 func TestInstanceProfilesDataFilterBadName(t *testing.T) {
-	qa.ResourceFixture{
+	_, err := qa.ResourceFixture{
 		Fixtures: []qa.HTTPFixture{
 			{
 				Method:   "GET",
@@ -436,10 +437,76 @@ func TestInstanceProfilesDataFilterBadName(t *testing.T) {
 			name = "does_not_exist"
 			pattern = "value"
 		}`,
-	}.ApplyAndExpectData(t, map[string]any{})
+	}.Apply(t)
+	assert.Error(t, err)
+	qa.AssertErrorStartsWith(t, err, "panic: no field `does_not_exist` found")
+}
+
+func TestInstanceProfilesDataFilterEmptyBlock(t *testing.T) {
+	_, err := qa.ResourceFixture{
+		Fixtures: []qa.HTTPFixture{
+			{
+				Method:   "GET",
+				Resource: "/api/2.0/instance-profiles/list",
+				Response: testResponse,
+			},
+		},
+		Resource:    DataSourceInstanceProfiles(),
+		Read:        true,
+		NonWritable: true,
+		ID:          "_",
+		HCL: `
+		filter {}`,
+	}.Apply(t)
+	assert.Error(t, err)
+	qa.AssertErrorStartsWith(t, err, "invalid config supplied")
 }
 
 func TestInstanceProfilesDataFilterNameOnly(t *testing.T) {
+	_, err := qa.ResourceFixture{
+		Fixtures: []qa.HTTPFixture{
+			{
+				Method:   "GET",
+				Resource: "/api/2.0/instance-profiles/list",
+				Response: testResponse,
+			},
+		},
+		Resource:    DataSourceInstanceProfiles(),
+		Read:        true,
+		NonWritable: true,
+		ID:          "_",
+		HCL: `
+		filter {
+			name = "does_not_exist"
+		}`,
+	}.Apply(t)
+	assert.Error(t, err)
+	qa.AssertErrorStartsWith(t, err, "invalid config supplied")
+}
+
+func TestInstanceProfilesDataFilterPatternOnly(t *testing.T) {
+	_, err := qa.ResourceFixture{
+		Fixtures: []qa.HTTPFixture{
+			{
+				Method:   "GET",
+				Resource: "/api/2.0/instance-profiles/list",
+				Response: testResponse,
+			},
+		},
+		Resource:    DataSourceInstanceProfiles(),
+		Read:        true,
+		NonWritable: true,
+		ID:          "_",
+		HCL: `
+		filter {
+			pattern = "val"
+		}`,
+	}.Apply(t)
+	assert.Error(t, err)
+	qa.AssertErrorStartsWith(t, err, "invalid config supplied")
+}
+
+func TestInstanceProfilesDataFilterPatternOnly2(t *testing.T) {
 	qa.ResourceFixture{
 		Fixtures: []qa.HTTPFixture{
 			{
@@ -454,7 +521,17 @@ func TestInstanceProfilesDataFilterNameOnly(t *testing.T) {
 		ID:          "_",
 		HCL: `
 		filter {
-			pattern = "does_not_exist"
+			name = "name"
+			pattern = ""
 		}`,
-	}.ApplyAndExpectData(t, map[string]any{})
+	}.ApplyAndExpectData(t, map[string]any{
+		"instance_profiles": []interface{}{
+			map[string]interface{}{
+				"name":     "KMSAccess",
+				"arn":      "arn:aws:iam::123456789098:instance-profile/KMSAccess",
+				"role_arn": "arn:aws:iam::123456789098:role/KMSAccess",
+				"is_meta":  false,
+			},
+		},
+	})
 }
