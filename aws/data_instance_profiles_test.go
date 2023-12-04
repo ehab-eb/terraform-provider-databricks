@@ -182,7 +182,7 @@ func TestInstanceProfilesDataFilterContains(t *testing.T) {
 	})
 }
 
-func TestInstanceProfilesDataFilterEqualsEmpty(t *testing.T) {
+func TestInstanceProfilesDataFilterExactEmpty(t *testing.T) {
 	qa.ResourceFixture{
 		Fixtures: []qa.HTTPFixture{
 			{
@@ -205,7 +205,7 @@ func TestInstanceProfilesDataFilterEqualsEmpty(t *testing.T) {
 	})
 }
 
-func TestInstanceProfilesDataFilterEquals(t *testing.T) {
+func TestInstanceProfilesDataFilterExact(t *testing.T) {
 	qa.ResourceFixture{
 		Fixtures: []qa.HTTPFixture{
 			{
@@ -439,7 +439,7 @@ func TestInstanceProfilesDataFilterBadName(t *testing.T) {
 		}`,
 	}.Apply(t)
 	assert.Error(t, err)
-	qa.AssertErrorStartsWith(t, err, "panic: no field `does_not_exist` found")
+	qa.AssertErrorStartsWith(t, err, "`does_not_exist` is not a valid value for the name field. Must be one of [")
 }
 
 func TestInstanceProfilesDataFilterEmptyBlock(t *testing.T) {
@@ -506,8 +506,8 @@ func TestInstanceProfilesDataFilterPatternOnly(t *testing.T) {
 	qa.AssertErrorStartsWith(t, err, "invalid config supplied")
 }
 
-func TestInstanceProfilesDataFilterPatternOnly2(t *testing.T) {
-	qa.ResourceFixture{
+func TestInstanceProfilesDataFilterPatternEmpty(t *testing.T) {
+	_, err := qa.ResourceFixture{
 		Fixtures: []qa.HTTPFixture{
 			{
 				Method:   "GET",
@@ -524,14 +524,30 @@ func TestInstanceProfilesDataFilterPatternOnly2(t *testing.T) {
 			name = "name"
 			pattern = ""
 		}`,
-	}.ApplyAndExpectData(t, map[string]any{
-		"instance_profiles": []interface{}{
-			map[string]interface{}{
-				"name":     "KMSAccess",
-				"arn":      "arn:aws:iam::123456789098:instance-profile/KMSAccess",
-				"role_arn": "arn:aws:iam::123456789098:role/KMSAccess",
-				"is_meta":  false,
+	}.Apply(t)
+	assert.Error(t, err)
+	qa.AssertErrorStartsWith(t, err, "field `Pattern` cannot be empty")
+}
+
+func TestInstanceProfilesDataFilterNameEmpty(t *testing.T) {
+	_, err := qa.ResourceFixture{
+		Fixtures: []qa.HTTPFixture{
+			{
+				Method:   "GET",
+				Resource: "/api/2.0/instance-profiles/list",
+				Response: testResponse,
 			},
 		},
-	})
+		Resource:    DataSourceInstanceProfiles(),
+		Read:        true,
+		NonWritable: true,
+		ID:          "_",
+		HCL: `
+		filter {
+			name = ""
+			pattern = "Access"
+		}`,
+	}.Apply(t)
+	assert.Error(t, err)
+	qa.AssertErrorStartsWith(t, err, "field `Name` cannot be empty")
 }

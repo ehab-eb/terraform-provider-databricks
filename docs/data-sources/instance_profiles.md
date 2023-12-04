@@ -18,7 +18,7 @@ output "all_instance_profiles" {
   value = data.databricks_instance_profiles.all.instance_profiles
 }
 ```
-**Filter**
+**Filter Results**
 
 Starts With:
 
@@ -68,7 +68,7 @@ data "databricks_instance_profiles" "all" {
 
 * `filter` - (Optional) Configuration block for filtering. Detailed below.
 
-### filter Configuration Block
+### `filter` Configuration Block
 The filter configuration block supports the following arguments:
 
 * `name` - (Required) Name of the filter field. Valid values can be found in the [attribute reference](#instance_profiles) below.
